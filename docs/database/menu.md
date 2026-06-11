@@ -21,12 +21,12 @@ Historical orders remain unchanged when the menu is edited. Orders store snapsho
 
 ## Architectural Context
 
-Foodpilot is designed primarily for small restaurants, takeaways and food trucks operating from one fixed location.
+Foodpilot is designed primarily for small restaurants, takeaways and food trucks operating through one active location.
 
 The default deployment model is:
 
 - one restaurant
-- one location
+- one active location
 - one menu
 - one customer database
 - one order flow
@@ -35,7 +35,9 @@ Foodpilot is not a restaurant marketplace or discovery platform.
 
 Every category and menu item belongs to exactly one restaurant through `restaurantId`.
 
-The MVP uses one main location. `locationId` remains optional and is reserved for later extensions without complicating the default setup.
+Location data is managed separately in the `locations` collection.
+
+The active location can represent a fixed business address or a mobile operating point and can be updated without changing the menu structure.
 
 ---
 
@@ -60,7 +62,6 @@ The MVP does not use a separate `menus` collection. Each restaurant has one menu
 {
   _id: ObjectId,
   restaurantId: ObjectId,
-  locationId: ObjectId | null,
 
   name: String,
   slug: String,
@@ -80,7 +81,6 @@ The MVP does not use a separate `menus` collection. Each restaurant has one menu
 {
   _id: ObjectId,
   restaurantId: ObjectId,
-  locationId: ObjectId | null,
   categoryId: ObjectId,
 
   internalNumber: String | null,
@@ -94,6 +94,7 @@ The MVP does not use a separate `menus` collection. Each restaurant has one menu
   ingredients: [String],
   allergenCodes: [String],
   additiveCodes: [String],
+  labels: [String],
 
   imageUrl: String | null,
 
@@ -158,7 +159,6 @@ The MVP does not use a separate `menus` collection. Each restaurant has one menu
 |---|---|---:|---:|---|
 | `_id` | `ObjectId` | Yes | Generated | Internal document identifier. |
 | `restaurantId` | `ObjectId` | Yes | — | Restaurant that owns the category or menu item. |
-| `locationId` | `ObjectId \| null` | No | `null` | Optional location reference reserved for later extensions. |
 | `createdAt` | `Date` | Yes | Generated | Creation timestamp. |
 | `updatedAt` | `Date` | Yes | Generated | Last update timestamp. |
 
@@ -286,6 +286,22 @@ choices: [
 
 The frontend combines the codes from the main product and the selected choices.
 
+---
+
+## Product Labels
+
+Product labels provide additional customer-facing information.
+
+```js
+labels: [
+  "vegan",
+  "vegetarian",
+  "spicy",
+  "gluten_free",
+  "lactose_free",
+  "halal"
+]
+```
 ---
 
 ## Images
@@ -564,7 +580,6 @@ References remain stored for traceability. Historical display and calculations a
 - `restaurantId` is required
 - `categoryId` is required
 - the referenced category belongs to the same restaurant
-- `locationId` remains `null` in the MVP
 - `name` is required, trimmed and non-empty
 - `slug` is required and unique within the restaurant
 - `internalNumber`, when present, is unique within the restaurant
@@ -684,6 +699,7 @@ The MVP includes:
 - one low-stock warning threshold
 - option groups and selectable choices
 - product and pricing snapshots in orders
+- optional customer-facing product labels
 
 ---
 
@@ -691,7 +707,6 @@ The MVP includes:
 
 The following features remain outside the MVP scope:
 
-- multiple locations through `locationId`
 - location-specific prices or availability overrides
 - managed installations containing multiple independent restaurants
 - multiple menus per restaurant
@@ -704,9 +719,7 @@ The following features remain outside the MVP scope:
 - recipe-based stock calculation
 - variant-specific inventory tracking
 - centralized allergen and additive catalogs
-- product labels such as vegan, vegetarian or spicy
 - multiple images per product
-- product ratings and review statistics
 - product import and export
 - category and product translations
 - external object storage for product images
@@ -717,20 +730,19 @@ The following features remain outside the MVP scope:
 
 | Topic | Decision |
 |---|---|
-| Default architecture | One restaurant, one main location, one menu and one order flow. |
+| Default architecture | One restaurant operates through one active location in the MVP. |
 | Restaurant ownership | Every category and menu item stores `restaurantId`. |
-| Location ownership | `locationId` remains optional and `null` in the MVP. |
-| Menu collection | No separate `menus` collection is used in the MVP. |
 | Money storage | All monetary values are stored as integer cents. |
 | Historical orders | Orders store snapshots of product, price, tax, allergen, additive and selected-option data. |
 | Availability | Products use `available`, `temporarily_unavailable` and `inactive`. |
-| Manual reactivation | Temporarily unavailable products remain paused until explicitly reactivated. |
+| Availability reactivation | Unavailable products remain unavailable until explicitly reactivated by the restaurant operator. |
 | Unavailable-product display | Configured at restaurant level. |
 | Inventory tracking | Optional product-level inventory tracks orderable units or portions, not ingredients. |
 | Inventory depletion | Products become temporarily unavailable when stock reaches `0`. |
 | Options | Embedded option groups support sizes, extras, side dishes and spice levels. |
 | Allergens and additives | Stable application-defined codes are stored for products and option choices. |
 | Images | One optional local image path or URL is stored per product. |
+| Product labels | Restaurant operators can add optional customer-facing labels to menu items. |
 
 ---
 
