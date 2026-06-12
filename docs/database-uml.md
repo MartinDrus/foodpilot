@@ -14,6 +14,7 @@ erDiagram
     RESTAURANTS ||--o{ ORDER_COUNTERS : owns
     RESTAURANTS ||--o{ REVIEWS : receives
     RESTAURANTS ||--o{ DRIVERS : employs
+    RESTAURANTS ||--o{ DELIVERY_TOURS : owns
 
     MENU_CATEGORIES ||--o{ MENU_ITEMS : contains
 
@@ -22,6 +23,7 @@ erDiagram
     CUSTOMERS o|--o{ REVIEWS : writes
 
     LOCATIONS ||--o{ ORDERS : serves
+    LOCATIONS ||--o{ DELIVERY_TOURS : starts_from
 
     ORDERS ||--o{ PAYMENTS : has
     ORDERS ||--o| INVENTORY_RESERVATIONS : reserves
@@ -30,7 +32,8 @@ erDiagram
     MENU_ITEMS ||--o{ INVENTORY_RESERVATIONS : referenced_by
     MENU_ITEMS ||--o{ REVIEWS : rated_in
 
-    DRIVERS o|--o{ ORDERS : assigned_to
+    DRIVERS o|--o{ DELIVERY_TOURS : assigned_to
+    DELIVERY_TOURS o|--o{ ORDERS : groups
 
     RESTAURANTS {
         ObjectId _id
@@ -119,11 +122,13 @@ erDiagram
         ObjectId restaurantId
         ObjectId locationId
         ObjectId customerId
+        ObjectId deliveryTourId
         string orderNumber
         object locationSnapshot
         object customerSnapshot
         object deliveryAddressSnapshot
         array items
+        array deliveryAssignmentHistory
         string orderStatus
         string paymentStatus
         array statusHistory
@@ -170,15 +175,42 @@ erDiagram
     DRIVERS {
         ObjectId _id
         ObjectId restaurantId
+        string name
+        string phone
+        string vehicleType
+        string dutyStatus
+        string internalNote
+        boolean isActive
+    }
+
+    DELIVERY_TOURS {
+        ObjectId _id
+        ObjectId restaurantId
+        ObjectId locationId
+        ObjectId driverId
+        object locationSnapshot
         string status
-        ObjectId currentOrderId
+        string loadingStatus
+        array stops
+        date estimatedReturnAt
+        date startedAt
+        date returnStartedAt
+        date completedAt
+        date cancelledAt
     }
 ```
 
 ## Notes
 
 - `restaurants`, `locations`, and `restaurantUsers` are documented in `docs/database/restaurant.md`.
-- `orders.locationSnapshot`, `orders.customerSnapshot`, and `orders.items[]` preserve immutable historical data.
+- `drivers` and `deliveryTours` are documented in `docs/database/driver.md`.
+- `orders.locationSnapshot`, `orders.customerSnapshot`, `orders.deliveryAddressSnapshot`, and `orders.items[]` preserve immutable historical data.
+- `deliveryTours.locationSnapshot` and `deliveryTours.stops[].deliveryAddressSnapshot` preserve the location and customer-address data used during dispatch.
+- Delivery orders reference the currently assigned tour through `orders.deliveryTourId`.
+- Orders do not store `driverId`. The assigned driver is resolved through `order → deliveryTour → driver`.
+- `orders.deliveryAssignmentHistory` is embedded in the order document and preserves reassignment history.
+- `deliveryTours.stops[]` is embedded in the tour document and stores stop sequence, stop state, address snapshots, and delivery timestamps.
 - `customers` currently follows the single-restaurant deployment model and therefore does not yet require a `restaurantId`.
 - `reviews` are included in the MVP, but their dedicated documentation in `docs/database/reviews.md` is still pending.
-- `drivers`, driver assignment, and delivery tours remain provisional until `docs/database/driver.md` is finalized.
+```
+
