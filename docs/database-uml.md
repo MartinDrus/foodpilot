@@ -5,6 +5,7 @@ This diagram reflects the current documentation state. Models that are not fully
 ```mermaid
 erDiagram
     RESTAURANTS ||--o{ LOCATIONS : owns
+    RESTAURANTS ||--o{ RESTAURANT_USERS : has
     RESTAURANTS ||--o{ MENU_CATEGORIES : owns
     RESTAURANTS ||--o{ MENU_ITEMS : owns
     RESTAURANTS ||--o{ ORDERS : receives
@@ -33,21 +34,45 @@ erDiagram
 
     RESTAURANTS {
         ObjectId _id
+        string name
+        string slug
+        string locationMode
         ObjectId activeLocationId
-        string cashOnPickupPolicy
-        number inventoryReservationMinutes
-        number orderAcceptanceTimeoutMinutes
-        string unavailableProductDisplayMode
+        object contact
+        object legalInformation
+        object branding
+        string currency
+        object orderConfiguration
+        object menuConfiguration
+        boolean isActive
     }
 
     LOCATIONS {
         ObjectId _id
         ObjectId restaurantId
-        string locationType
+        string name
+        string displayAddress
         object address
-        object coordinates
+        object geoLocation
         array openingHours
+        array openingHourExceptions
+        string timezone
+        string orderAcceptanceStatus
+        object preorderSettings
+        object deliverySettings
+        boolean isEnabled
+    }
+
+    RESTAURANT_USERS {
+        ObjectId _id
+        ObjectId restaurantId
+        string name
+        string email
+        string emailNormalized
+        string passwordHash
+        string role
         boolean isActive
+        date lastLoginAt
     }
 
     CUSTOMERS {
@@ -152,7 +177,8 @@ erDiagram
 
 ## Notes
 
-- `restaurants`, `locations`, and `drivers` are still provisional because their dedicated documentation files have not been finalized.
+- `restaurants`, `locations`, and `restaurantUsers` are documented in `docs/database/restaurant.md`.
 - `orders.locationSnapshot`, `orders.customerSnapshot`, and `orders.items[]` preserve immutable historical data.
 - `customers` currently follows the single-restaurant deployment model and therefore does not yet require a `restaurantId`.
-- Driver assignment is planned and will be finalized in `docs/database/driver.md`.
+- `reviews` are included in the MVP, but their dedicated documentation in `docs/database/reviews.md` is still pending.
+- `drivers`, driver assignment, and delivery tours remain provisional until `docs/database/driver.md` is finalized.
