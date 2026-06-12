@@ -8,13 +8,13 @@ Foodpilot aims to provide a modern, open-source platform that gives restaurants 
 
 ## Goals
 
-- Self-hostable
+- Standalone ordering interface
+- Simple integration into existing restaurant websites
 - Modern user experience
 - Restaurant management
 - Order management
 - Delivery management
 - Customer management
-- Multiple locations
 - Statistics and reporting
 - Open API
 - Extensible architecture
@@ -26,5 +26,9 @@ Foodpilot aims to provide a modern, open-source platform that gives restaurants 
 - Restaurant discovery platform
 - Social network
 - Food delivery network
+- Full restaurant website builder
+- Content management system
 
-Foodpilot focuses on restaurant operations, order processing, and delivery management rather than customer acquisition or marketplace services.
+Foodpilot focuses on ordering, checkout and delivery operations.
+
+Restaurants can integrate the ordering flow into an existing website through a simple link or call-to-action button.
