@@ -44,6 +44,7 @@ Related data is stored separately:
 payments
 inventoryReservations
 orderCounters
+deliveryTours
 reviews
 ```
 
@@ -88,6 +89,7 @@ Related MVP collections:
 payments
 inventoryReservations
 orderCounters
+deliveryTours
 reviews
 ```
 
@@ -104,24 +106,22 @@ reviews
 
   locationSnapshot: {
     name: String,
-    locationType:
-      "fixed"
-      | "mobile",
-
-    displayAddress: String | null,
+    displayAddress: String,
 
     address: {
       street: String | null,
       houseNumber: String | null,
       zip: String | null,
-      city: String | null
+      city: String | null,
+      countryCode: String | null
     },
 
-    coordinates: {
-      lat: Number,
-      lng: Number
+    geoLocation: {
+      type: "Point",
+      coordinates: [Number, Number]
     }
   },
+
 
   orderNumber: String | null,
 
@@ -144,8 +144,29 @@ reviews
     zip: String,
     city: String,
     floor: String | null,
-    note: String | null
+    note: String | null,
+
+    geoLocation: {
+      type: "Point",
+      coordinates: [Number, Number]
+    }
   } | null,
+
+  deliveryTourId: ObjectId | null,
+
+  deliveryAssignmentHistory: [
+    {
+      deliveryTourId: ObjectId,
+      assignedAt: Date,
+      unassignedAt: Date | null,
+
+      reason:
+        "initial_assignment"
+        | "manual_reassignment"
+        | "delivery_retry"
+        | "tour_cancelled"
+    }
+  ],
 
   items: [
     {
@@ -227,6 +248,7 @@ reviews
     | "preparing"
     | "ready"
     | "out_for_delivery"
+    | "delivery_failed"
     | "delivered"
     | "picked_up"
     | "rejected"
@@ -425,6 +447,21 @@ Delivery order:
 }
 ```
 
+Only delivery orders can reference a delivery tour.
+
+Pickup orders always use:
+
+```js
+deliveryTourId: null
+```
+The assigned driver is resolved through:
+
+```text
+order
+→ deliveryTour
+→ driver
+```
+
 `fulfilmentEstimate` stores the current customer-facing estimate.
 
 For pickup:
@@ -516,6 +553,7 @@ A PayPal order becomes visible to the restaurant only after successful payment.
 
 ### Delivery Flow
 
+
 ```text
 new
   → accepted
@@ -523,6 +561,31 @@ new
   → ready
   → out_for_delivery
   → delivered
+```
+
+### Failed Delivery Attempt
+
+```text
+out_for_delivery
+  → delivery_failed
+```
+
+A failed delivery attempt is not treated as a successfully completed order.
+
+A later retry uses:
+
+```text
+delivery_failed
+  → out_for_delivery
+```
+
+when the order is assigned to a new delivery tour.
+
+If no retry is planned:
+
+```text
+delivery_failed
+  → cancelled
 ```
 
 ### Pickup Flow
@@ -906,6 +969,7 @@ accepted
 preparing
 ready
 out_for_delivery
+delivery_failed
 ```
 
 A reason is required.
@@ -1080,6 +1144,7 @@ Historical order snapshots remain unchanged while retention is required.
 | `inventoryReservations` | One inventory reservation references `orderId`. |
 | `orderCounters` | Atomic counters allocate annual restaurant-specific order numbers. |
 | `reviews` | At most one review references a completed order. |
+| `deliveryTours` | Delivery orders reference the currently assigned tour through `deliveryTourId`. The driver is resolved through the tour. |
 
 ---
 
@@ -1110,8 +1175,8 @@ Rules:
 - `totalSpentCents` increases by `totalInCents`
 - a successful refund reduces `totalSpentCents` by the refunded amount
 - `lastOrderAt` stores the most recent successful completion timestamp
-- rejected, cancelled and expired orders never increase successful-order statistics
-
+- rejected, cancelled, expired and delivery-failed orders never increase successful-order statistics
+  
 ---
 
 ## Validation Rules
@@ -1145,6 +1210,12 @@ Rules:
 - every fulfilment estimate change appends one `fulfilmentEstimateHistory` entry
 - provider webhook processing is idempotent
 - customer statistic updates are idempotent
+- delivery address snapshots include valid GeoJSON coordinates
+- `delivery_failed` is valid only for delivery orders
+- `delivery_failed` does not count as a successfully completed order
+- only delivery orders can reference `deliveryTourId`
+- pickup orders always use `deliveryTourId: null`
+- a referenced delivery tour belongs to the same restaurant and location as the order
 
 ### Reviews
 
@@ -1214,6 +1285,14 @@ db.orders.createIndex({
   createdAt: -1
 })
 ```
+
+```js
+db.orders.createIndex({
+  restaurantId: 1,
+  deliveryTourId: 1
+})
+```
+
 
 ### Payments
 
@@ -1341,6 +1420,9 @@ The MVP includes:
 - reviews for completed orders
 - optional item-level ratings
 - restaurant-controlled review publication
+- delivery-tour assignment for delivery orders
+- embedded delivery-assignment history
+- failed-delivery handling and delivery retries
 
 ---
 
@@ -1351,7 +1433,7 @@ The MVP includes:
 - additional online payment providers
 - discount campaigns and coupon codes
 - online tipping
-- driver accounts and driver assignment
+- driver accounts and dedicated driver interface
 - GPS-based delivery tracking
 - advanced delivery estimation
 - manual cash pickup exceptions for selected customers
@@ -1384,6 +1466,9 @@ The MVP includes:
 | Order numbers | Allocated atomically per restaurant and year when an order enters `new`. |
 | Reviews | Stored separately and linked to completed orders. |
 | Item ratings | Individual ordered products can receive their own rating. |
+| Delivery tours | Delivery orders reference a tour. The assigned driver is resolved through the tour. |
+| Delivery assignment history | Tour assignments and reassignments remain traceable inside the order document. |
+| Failed delivery attempts | Use `delivery_failed` and can lead to a retry or cancellation. |
 
 ---
 
