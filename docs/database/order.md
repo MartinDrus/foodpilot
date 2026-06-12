@@ -1051,57 +1051,30 @@ Previously issued numbers are never reused.
 
 ## Reviews
 
-Reviews are included in the MVP and stored separately from orders and menu items.
+Reviews are stored separately from orders in:
 
-A review can be created only for an order with:
+```text
+reviews
+```
+
+A review can only be created by a registered customer for their own successfully completed order.
+
+Eligible order statuses are:
 
 ```text
 delivered
 picked_up
 ```
 
-The restaurant controls publication.
+Each order can receive at most one review.
 
-```js
-{
-  _id: ObjectId,
+Reviews can include:
 
-  restaurantId: ObjectId,
-  orderId: ObjectId,
-  customerId: ObjectId | null,
-
-  overallRating: Number,
-  deliveryRating: Number | null,
-  comment: String | null,
-
-  itemRatings: [
-    {
-      orderItemId: ObjectId,
-      menuItemId: ObjectId,
-      nameSnapshot: String,
-
-      rating: Number,
-      comment: String | null
-    }
-  ],
-
-  isPublished: Boolean,
-  publishedAt: Date | null,
-
-  createdAt: Date,
-  updatedAt: Date
-}
+```text
+overall restaurant rating
+optional delivery rating
+optional item-level ratings and comments
 ```
-
-A unique `orderId` index prevents multiple reviews for the same order.
-
-Individual products such as burgers, pizzas or side dishes can receive their own rating through:
-
-```js
-itemRatings
-```
-
-Aggregated product statistics can be calculated from published reviews.
 
 The detailed review model is documented separately in:
 
