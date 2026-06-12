@@ -1,6 +1,7 @@
+````md
 # Foodpilot Collections UML
 
-This diagram reflects the current documentation state. Models that are not fully specified yet are marked as planned.
+This diagram reflects the current documentation state.
 
 ```mermaid
 erDiagram
@@ -20,10 +21,11 @@ erDiagram
 
     CUSTOMERS ||--o{ PASSWORD_RESET_TOKENS : requests
     CUSTOMERS o|--o{ ORDERS : places
-    CUSTOMERS o|--o{ REVIEWS : writes
+    CUSTOMERS ||--o{ REVIEWS : writes
 
     LOCATIONS ||--o{ ORDERS : serves
     LOCATIONS ||--o{ DELIVERY_TOURS : starts_from
+    LOCATIONS ||--o{ REVIEWS : receives
 
     ORDERS ||--o{ PAYMENTS : has
     ORDERS ||--o| INVENTORY_RESERVATIONS : reserves
@@ -164,12 +166,19 @@ erDiagram
     REVIEWS {
         ObjectId _id
         ObjectId restaurantId
+        ObjectId locationId
         ObjectId orderId
         ObjectId customerId
+        string authorDisplayName
         number overallRating
         number deliveryRating
+        string comment
         array itemRatings
-        boolean isPublished
+        string moderationStatus
+        string moderationReason
+        date moderatedAt
+        date publishedAt
+        date deletedAt
     }
 
     DRIVERS {
@@ -204,13 +213,18 @@ erDiagram
 
 - `restaurants`, `locations`, and `restaurantUsers` are documented in `docs/database/restaurant.md`.
 - `drivers` and `deliveryTours` are documented in `docs/database/driver.md`.
+- `reviews` are documented in `docs/database/reviews.md`.
 - `orders.locationSnapshot`, `orders.customerSnapshot`, `orders.deliveryAddressSnapshot`, and `orders.items[]` preserve immutable historical data.
 - `deliveryTours.locationSnapshot` and `deliveryTours.stops[].deliveryAddressSnapshot` preserve the location and customer-address data used during dispatch.
 - Delivery orders reference the currently assigned tour through `orders.deliveryTourId`.
 - Orders do not store `driverId`. The assigned driver is resolved through `order → deliveryTour → driver`.
 - `orders.deliveryAssignmentHistory` is embedded in the order document and preserves reassignment history.
 - `deliveryTours.stops[]` is embedded in the tour document and stores stop sequence, stop state, address snapshots, and delivery timestamps.
-- `customers` currently follows the single-restaurant deployment model and therefore does not yet require a `restaurantId`.
-- `reviews` are included in the MVP, but their dedicated documentation in `docs/database/reviews.md` is still pending.
+- `reviews.itemRatings[]` is embedded in the review document and stores optional ratings for individual ordered products.
+- Reviews can only be created by registered customers for their own successfully completed orders.
+- Guest checkout remains supported, but guest orders cannot receive reviews in the MVP.
+- Reviews are published automatically and can only be hidden through platform moderation.
+- Hidden and soft-deleted reviews are excluded from public rating statistics.
+- `customers` currently follows the single-restaurant deployment model and therefore does not require a `restaurantId`.
 ```
-
+````
